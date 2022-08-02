@@ -3,17 +3,24 @@ import asyncio
 import datetime
 from random import random
 
-from homeassistant import bootstrap, config_entries
+from homeassistant import config_entries, setup
+from homeassistant.components import persistent_notification
+from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     get_last_statistics,
 )
+from homeassistant.components.repairs import IssueSeverity, async_create_issue
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     EVENT_HOMEASSISTANT_START,
     SOUND_PRESSURE_DB,
 )
 import homeassistant.core as ha
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.helpers.typing import ConfigType
 import homeassistant.util.dt as dt_util
 
 DOMAIN = "demo"
@@ -36,6 +43,7 @@ COMPONENTS_WITH_CONFIG_ENTRY_DEMO_PLATFORM = [
     "sensor",
     "siren",
     "switch",
+    "update",
     "vacuum",
     "water_heater",
 ]
@@ -51,7 +59,7 @@ COMPONENTS_WITH_DEMO_PLATFORM = [
 ]
 
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the demo environment."""
     if DOMAIN not in config:
         return True
@@ -65,9 +73,7 @@ async def async_setup(hass, config):
 
     # Set up demo platforms
     for platform in COMPONENTS_WITH_DEMO_PLATFORM:
-        hass.async_create_task(
-            hass.helpers.discovery.async_load_platform(platform, DOMAIN, {}, config)
-        )
+        hass.async_create_task(async_load_platform(hass, platform, DOMAIN, {}, config))
 
     config.setdefault(ha.DOMAIN, {})
     config.setdefault(DOMAIN, {})
@@ -79,11 +85,11 @@ async def async_setup(hass, config):
     if not hass.config.longitude:
         hass.config.longitude = 117.22743
 
-    tasks = [bootstrap.async_setup_component(hass, "sun", config)]
+    tasks = [setup.async_setup_component(hass, "sun", config)]
 
     # Set up input select
     tasks.append(
-        bootstrap.async_setup_component(
+        setup.async_setup_component(
             hass,
             "input_select",
             {
@@ -104,7 +110,7 @@ async def async_setup(hass, config):
 
     # Set up input boolean
     tasks.append(
-        bootstrap.async_setup_component(
+        setup.async_setup_component(
             hass,
             "input_boolean",
             {
@@ -119,9 +125,25 @@ async def async_setup(hass, config):
         )
     )
 
+    # Set up input button
+    tasks.append(
+        setup.async_setup_component(
+            hass,
+            "input_button",
+            {
+                "input_button": {
+                    "bell": {
+                        "icon": "mdi:bell-ring-outline",
+                        "name": "Ring bell",
+                    }
+                }
+            },
+        )
+    )
+
     # Set up input number
     tasks.append(
-        bootstrap.async_setup_component(
+        setup.async_setup_component(
             hass,
             "input_number",
             {
@@ -144,8 +166,10 @@ async def async_setup(hass, config):
         return False
 
     # Set up example persistent notification
-    hass.components.persistent_notification.async_create(
-        "This is an example of a persistent notification.", title="Example Notification"
+    persistent_notification.async_create(
+        hass,
+        "This is an example of a persistent notification.",
+        title="Example Notification",
     )
 
     async def demo_start_listener(_event):
@@ -153,6 +177,39 @@ async def async_setup(hass, config):
         await finish_setup(hass, config)
 
     hass.bus.async_listen(EVENT_HOMEASSISTANT_START, demo_start_listener)
+
+    # Create issues
+    async_create_issue(
+        hass,
+        DOMAIN,
+        "transmogrifier_deprecated",
+        breaks_in_ha_version="2023.1.1",
+        is_fixable=False,
+        learn_more_url="https://en.wiktionary.org/wiki/transmogrifier",
+        severity=IssueSeverity.WARNING,
+        translation_key="transmogrifier_deprecated",
+    )
+
+    async_create_issue(
+        hass,
+        DOMAIN,
+        "out_of_blinker_fluid",
+        breaks_in_ha_version="2023.1.1",
+        is_fixable=True,
+        learn_more_url="https://www.youtube.com/watch?v=b9rntRxLlbU",
+        severity=IssueSeverity.CRITICAL,
+        translation_key="out_of_blinker_fluid",
+    )
+
+    async_create_issue(
+        hass,
+        DOMAIN,
+        "unfixable_problem",
+        is_fixable=False,
+        learn_more_url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        severity=IssueSeverity.WARNING,
+        translation_key="unfixable_problem",
+    )
 
     return True
 
@@ -222,7 +279,7 @@ async def _insert_statistics(hass):
     }
     statistic_id = f"{DOMAIN}:energy_consumption"
     sum_ = 0
-    last_stats = await hass.async_add_executor_job(
+    last_stats = await get_instance(hass).async_add_executor_job(
         get_last_statistics, hass, 1, statistic_id, True
     )
     if "domain:energy_consumption" in last_stats:
@@ -233,13 +290,12 @@ async def _insert_statistics(hass):
     async_add_external_statistics(hass, metadata, statistics)
 
 
-async def async_setup_entry(hass, config_entry):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set the config entry up."""
     # Set up demo platforms with config entry
-    for platform in COMPONENTS_WITH_CONFIG_ENTRY_DEMO_PLATFORM:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
-        )
+    await hass.config_entries.async_forward_entry_setups(
+        config_entry, COMPONENTS_WITH_CONFIG_ENTRY_DEMO_PLATFORM
+    )
     if "recorder" in hass.config.components:
         await _insert_statistics(hass)
     return True
@@ -258,7 +314,7 @@ async def finish_setup(hass, config):
         lights = sorted(hass.states.async_entity_ids("light"))
 
     # Set up scripts
-    await bootstrap.async_setup_component(
+    await setup.async_setup_component(
         hass,
         "script",
         {
@@ -287,7 +343,7 @@ async def finish_setup(hass, config):
     )
 
     # Set up scenes
-    await bootstrap.async_setup_component(
+    await setup.async_setup_component(
         hass,
         "scene",
         {

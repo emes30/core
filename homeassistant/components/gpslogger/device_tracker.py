@@ -1,5 +1,5 @@
 """Support for the GPSLogger device tracking."""
-from homeassistant.components.device_tracker import SOURCE_TYPE_GPS
+from homeassistant.components.device_tracker import SourceType
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import DOMAIN as GPL_DOMAIN, TRACKER_UPDATE
@@ -25,8 +26,8 @@ from .const import (
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-):
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     """Configure a dispatcher connection based on a config entry."""
 
     @callback
@@ -44,7 +45,7 @@ async def async_setup_entry(
     ] = async_dispatcher_connect(hass, TRACKER_UPDATE, _receive_data)
 
     # Restore previously loaded devices
-    dev_reg = await device_registry.async_get_registry(hass)
+    dev_reg = device_registry.async_get(hass)
     dev_ids = {
         identifier[1]
         for device in dev_reg.devices.values()
@@ -117,9 +118,9 @@ class GPSLoggerEntity(TrackerEntity, RestoreEntity):
         return DeviceInfo(identifiers={(GPL_DOMAIN, self._unique_id)}, name=self._name)
 
     @property
-    def source_type(self):
+    def source_type(self) -> SourceType:
         """Return the source type, eg gps or router, of the device."""
-        return SOURCE_TYPE_GPS
+        return SourceType.GPS
 
     async def async_added_to_hass(self):
         """Register state update callback."""

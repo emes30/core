@@ -1,12 +1,13 @@
 """The USB Discovery integration."""
 from __future__ import annotations
 
+from collections.abc import Coroutine
 import dataclasses
 import fnmatch
 import logging
 import os
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from serial.tools.list_ports import comports
 from serial.tools.list_ports_common import ListPortInfo
@@ -20,13 +21,15 @@ from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.data_entry_flow import BaseServiceInfo
 from homeassistant.helpers import discovery_flow, system_info
 from homeassistant.helpers.debounce import Debouncer
-from homeassistant.helpers.frame import report
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_usb
 
 from .const import DOMAIN
 from .models import USBDevice
 from .utils import usb_device_from_port
+
+if TYPE_CHECKING:
+    from pyudev import Device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,24 +46,6 @@ class UsbServiceInfo(BaseServiceInfo):
     serial_number: str | None
     manufacturer: str | None
     description: str | None
-
-    # Used to prevent log flooding. To be removed in 2022.6
-    _warning_logged: bool = False
-
-    def __getitem__(self, name: str) -> Any:
-        """
-        Allow property access by name for compatibility reason.
-
-        Deprecated, and will be removed in version 2022.6.
-        """
-        if not self._warning_logged:
-            report(
-                f"accessed discovery_info['{name}'] instead of discovery_info.{name}; this will fail in version 2022.6",
-                exclude_integrations={"usb"},
-                error_if_core=False,
-            )
-            self._warning_logged = True
-        return getattr(self, name)
 
 
 def human_readable_device_name(
@@ -125,7 +110,7 @@ class USBDiscovery:
         self.usb = usb
         self.seen: set[tuple[str, ...]] = set()
         self.observer_active = False
-        self._request_debouncer: Debouncer | None = None
+        self._request_debouncer: Debouncer[Coroutine[Any, Any, None]] | None = None
 
     async def async_setup(self) -> None:
         """Set up USB Discovery."""
@@ -167,12 +152,14 @@ class USBDiscovery:
             monitor, callback=self._device_discovered, name="usb-observer"
         )
         observer.start()
-        self.hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_STOP, lambda event: observer.stop()
-        )
+
+        def _stop_observer(event: Event) -> None:
+            observer.stop()
+
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_observer)
         self.observer_active = True
 
-    def _device_discovered(self, device):
+    def _device_discovered(self, device: Device) -> None:
         """Call when the observer discovers a new usb tty device."""
         if device.action != "add":
             return

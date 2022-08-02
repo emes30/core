@@ -146,7 +146,17 @@ def get_zeroconf_info_mock_model(model):
 
 async def test_setup(hass, mock_async_zeroconf):
     """Test configured options for a device are loaded via config entry."""
-    with patch.object(
+    mock_zc = {
+        "_http._tcp.local.": [
+            {
+                "domain": "shelly",
+                "name": "shelly*",
+                "properties": {"macaddress": "ffaadd*"},
+            }
+        ],
+        "_Volumio._tcp.local.": [{"domain": "volumio"}],
+    }
+    with patch.dict(zc_gen.ZEROCONF, mock_zc, clear=True,), patch.object(
         hass.config_entries.flow, "async_init"
     ) as mock_config_flow, patch.object(
         zeroconf, "HaAsyncServiceBrowser", side_effect=service_update_mock
@@ -160,7 +170,7 @@ async def test_setup(hass, mock_async_zeroconf):
 
     assert len(mock_service_browser.mock_calls) == 1
     expected_flow_calls = 0
-    for matching_components in zc_gen.ZEROCONF.values():
+    for matching_components in mock_zc.values():
         domains = set()
         for component in matching_components:
             if len(component) == 1:
@@ -294,7 +304,11 @@ async def test_zeroconf_match_macaddress(hass, mock_async_zeroconf):
         zc_gen.ZEROCONF,
         {
             "_http._tcp.local.": [
-                {"domain": "shelly", "name": "shelly*", "macaddress": "FFAADD*"}
+                {
+                    "domain": "shelly",
+                    "name": "shelly*",
+                    "properties": {"macaddress": "ffaadd*"},
+                }
             ]
         },
         clear=True,
@@ -329,7 +343,11 @@ async def test_zeroconf_match_manufacturer(hass, mock_async_zeroconf):
 
     with patch.dict(
         zc_gen.ZEROCONF,
-        {"_airplay._tcp.local.": [{"domain": "samsungtv", "manufacturer": "samsung*"}]},
+        {
+            "_airplay._tcp.local.": [
+                {"domain": "samsungtv", "properties": {"manufacturer": "samsung*"}}
+            ]
+        },
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -362,7 +380,11 @@ async def test_zeroconf_match_model(hass, mock_async_zeroconf):
 
     with patch.dict(
         zc_gen.ZEROCONF,
-        {"_airplay._tcp.local.": [{"domain": "appletv", "model": "appletv*"}]},
+        {
+            "_airplay._tcp.local.": [
+                {"domain": "appletv", "properties": {"model": "appletv*"}}
+            ]
+        },
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -395,7 +417,11 @@ async def test_zeroconf_match_manufacturer_not_present(hass, mock_async_zeroconf
 
     with patch.dict(
         zc_gen.ZEROCONF,
-        {"_airplay._tcp.local.": [{"domain": "samsungtv", "manufacturer": "samsung*"}]},
+        {
+            "_airplay._tcp.local.": [
+                {"domain": "samsungtv", "properties": {"manufacturer": "samsung*"}}
+            ]
+        },
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -459,7 +485,11 @@ async def test_zeroconf_no_match_manufacturer(hass, mock_async_zeroconf):
 
     with patch.dict(
         zc_gen.ZEROCONF,
-        {"_airplay._tcp.local.": [{"domain": "samsungtv", "manufacturer": "samsung*"}]},
+        {
+            "_airplay._tcp.local.": [
+                {"domain": "samsungtv", "properties": {"manufacturer": "samsung*"}}
+            ]
+        },
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -483,7 +513,7 @@ async def test_homekit_match_partial_space(hass, mock_async_zeroconf):
         zc_gen.ZEROCONF,
         {"_hap._tcp.local.": [{"domain": "homekit_controller"}]},
         clear=True,
-    ), patch.object(
+    ), patch.dict(zc_gen.HOMEKIT, {"LIFX": "lifx"}, clear=True,), patch.object(
         hass.config_entries.flow, "async_init"
     ) as mock_config_flow, patch.object(
         zeroconf,
@@ -500,7 +530,8 @@ async def test_homekit_match_partial_space(hass, mock_async_zeroconf):
         await hass.async_block_till_done()
 
     assert len(mock_service_browser.mock_calls) == 1
-    assert len(mock_config_flow.mock_calls) == 1
+    # One for HKC, and one for LIFX since lifx is local polling
+    assert len(mock_config_flow.mock_calls) == 2
     assert mock_config_flow.mock_calls[0][1][0] == "lifx"
 
 
@@ -509,6 +540,10 @@ async def test_homekit_match_partial_dash(hass, mock_async_zeroconf):
     with patch.dict(
         zc_gen.ZEROCONF,
         {"_hap._udp.local.": [{"domain": "homekit_controller"}]},
+        clear=True,
+    ), patch.dict(
+        zc_gen.HOMEKIT,
+        {"Smart Bridge": "lutron_caseta"},
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -520,7 +555,7 @@ async def test_homekit_match_partial_dash(hass, mock_async_zeroconf):
         ),
     ) as mock_service_browser, patch(
         "homeassistant.components.zeroconf.AsyncServiceInfo",
-        side_effect=get_homekit_info_mock("Rachio-fa46ba", HOMEKIT_STATUS_UNPAIRED),
+        side_effect=get_homekit_info_mock("Smart Bridge-001", HOMEKIT_STATUS_UNPAIRED),
     ):
         assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
         hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
@@ -528,7 +563,7 @@ async def test_homekit_match_partial_dash(hass, mock_async_zeroconf):
 
     assert len(mock_service_browser.mock_calls) == 1
     assert len(mock_config_flow.mock_calls) == 1
-    assert mock_config_flow.mock_calls[0][1][0] == "rachio"
+    assert mock_config_flow.mock_calls[0][1][0] == "lutron_caseta"
 
 
 async def test_homekit_match_partial_fnmatch(hass, mock_async_zeroconf):
@@ -537,7 +572,7 @@ async def test_homekit_match_partial_fnmatch(hass, mock_async_zeroconf):
         zc_gen.ZEROCONF,
         {"_hap._tcp.local.": [{"domain": "homekit_controller"}]},
         clear=True,
-    ), patch.dict(zc_gen.HOMEKIT, {"YLDP*": "yeelight"}, clear=True,), patch.object(
+    ), patch.dict(zc_gen.HOMEKIT, {"YLDP*": "yeelight"}, clear=True), patch.object(
         hass.config_entries.flow, "async_init"
     ) as mock_config_flow, patch.object(
         zeroconf,
@@ -564,7 +599,7 @@ async def test_homekit_match_full(hass, mock_async_zeroconf):
         zc_gen.ZEROCONF,
         {"_hap._udp.local.": [{"domain": "homekit_controller"}]},
         clear=True,
-    ), patch.object(
+    ), patch.dict(zc_gen.HOMEKIT, {"BSB002": "hue"}, clear=True,), patch.object(
         hass.config_entries.flow, "async_init"
     ) as mock_config_flow, patch.object(
         zeroconf,
@@ -590,6 +625,10 @@ async def test_homekit_already_paired(hass, mock_async_zeroconf):
     with patch.dict(
         zc_gen.ZEROCONF,
         {"_hap._tcp.local.": [{"domain": "homekit_controller"}]},
+        clear=True,
+    ), patch.dict(
+        zc_gen.HOMEKIT,
+        {"AC02": "tado", "tado": "tado"},
         clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
@@ -619,6 +658,10 @@ async def test_homekit_invalid_paring_status(hass, mock_async_zeroconf):
         zc_gen.ZEROCONF,
         {"_hap._tcp.local.": [{"domain": "homekit_controller"}]},
         clear=True,
+    ), patch.dict(
+        zc_gen.HOMEKIT,
+        {"Smart Bridge": "lutron_caseta"},
+        clear=True,
     ), patch.object(
         hass.config_entries.flow, "async_init"
     ) as mock_config_flow, patch.object(
@@ -629,7 +672,7 @@ async def test_homekit_invalid_paring_status(hass, mock_async_zeroconf):
         ),
     ) as mock_service_browser, patch(
         "homeassistant.components.zeroconf.AsyncServiceInfo",
-        side_effect=get_homekit_info_mock("tado", b"invalid"),
+        side_effect=get_homekit_info_mock("Smart Bridge", b"invalid"),
     ):
         assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
         hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
@@ -637,7 +680,7 @@ async def test_homekit_invalid_paring_status(hass, mock_async_zeroconf):
 
     assert len(mock_service_browser.mock_calls) == 1
     assert len(mock_config_flow.mock_calls) == 1
-    assert mock_config_flow.mock_calls[0][1][0] == "tado"
+    assert mock_config_flow.mock_calls[0][1][0] == "lutron_caseta"
 
 
 async def test_homekit_not_paired(hass, mock_async_zeroconf):
@@ -663,6 +706,78 @@ async def test_homekit_not_paired(hass, mock_async_zeroconf):
     assert len(mock_service_browser.mock_calls) == 1
     assert len(mock_config_flow.mock_calls) == 1
     assert mock_config_flow.mock_calls[0][1][0] == "homekit_controller"
+
+
+async def test_homekit_controller_still_discovered_unpaired_for_cloud(
+    hass, mock_async_zeroconf
+):
+    """Test discovery is still passed to homekit controller when unpaired and discovered by cloud integration.
+
+    Since we prefer local control, if the integration that is being discovered
+    is cloud AND the homekit device is unpaired we still want to discovery it
+    """
+    with patch.dict(
+        zc_gen.ZEROCONF,
+        {"_hap._udp.local.": [{"domain": "homekit_controller"}]},
+        clear=True,
+    ), patch.dict(zc_gen.HOMEKIT, {"Rachio": "rachio"}, clear=True,), patch.object(
+        hass.config_entries.flow, "async_init"
+    ) as mock_config_flow, patch.object(
+        zeroconf,
+        "HaAsyncServiceBrowser",
+        side_effect=lambda *args, **kwargs: service_update_mock(
+            *args, **kwargs, limit_service="_hap._udp.local."
+        ),
+    ) as mock_service_browser, patch(
+        "homeassistant.components.zeroconf.AsyncServiceInfo",
+        side_effect=get_homekit_info_mock("Rachio-xyz", HOMEKIT_STATUS_UNPAIRED),
+    ):
+        assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+        await hass.async_block_till_done()
+
+    assert len(mock_service_browser.mock_calls) == 1
+    assert len(mock_config_flow.mock_calls) == 2
+    assert mock_config_flow.mock_calls[0][1][0] == "rachio"
+    assert mock_config_flow.mock_calls[1][1][0] == "homekit_controller"
+
+
+async def test_homekit_controller_still_discovered_unpaired_for_polling(
+    hass, mock_async_zeroconf
+):
+    """Test discovery is still passed to homekit controller when unpaired and discovered by polling integration.
+
+    Since we prefer local push, if the integration that is being discovered
+    is polling AND the homekit device is unpaired we still want to discovery it
+    """
+    with patch.dict(
+        zc_gen.ZEROCONF,
+        {"_hap._udp.local.": [{"domain": "homekit_controller"}]},
+        clear=True,
+    ), patch.dict(
+        zc_gen.HOMEKIT,
+        {"iSmartGate": "gogogate2"},
+        clear=True,
+    ), patch.object(
+        hass.config_entries.flow, "async_init"
+    ) as mock_config_flow, patch.object(
+        zeroconf,
+        "HaAsyncServiceBrowser",
+        side_effect=lambda *args, **kwargs: service_update_mock(
+            *args, **kwargs, limit_service="_hap._udp.local."
+        ),
+    ) as mock_service_browser, patch(
+        "homeassistant.components.zeroconf.AsyncServiceInfo",
+        side_effect=get_homekit_info_mock("iSmartGate", HOMEKIT_STATUS_UNPAIRED),
+    ):
+        assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+        await hass.async_block_till_done()
+
+    assert len(mock_service_browser.mock_calls) == 1
+    assert len(mock_config_flow.mock_calls) == 2
+    assert mock_config_flow.mock_calls[0][1][0] == "gogogate2"
+    assert mock_config_flow.mock_calls[1][1][0] == "homekit_controller"
 
 
 async def test_info_from_service_non_utf8(hass):
@@ -723,6 +838,15 @@ async def test_info_from_service_prefers_ipv4(hass):
     service_info.addresses = ["2001:db8:3333:4444:5555:6666:7777:8888", "192.168.66.12"]
     info = zeroconf.info_from_service(service_info)
     assert info.host == "192.168.66.12"
+
+
+async def test_info_from_service_can_return_ipv6(hass):
+    """Test that IPv6-only devices can be discovered."""
+    service_type = "_test._tcp.local."
+    service_info = get_service_info_mock(service_type, f"test.{service_type}")
+    service_info.addresses = ["fd11:1111:1111:0:1234:1234:1234:1234"]
+    info = zeroconf.info_from_service(service_info)
+    assert info.host == "fd11:1111:1111:0:1234:1234:1234:1234"
 
 
 async def test_get_instance(hass, mock_async_zeroconf):
@@ -891,11 +1015,11 @@ async def test_async_detect_interfaces_setting_empty_route_linux(
         await hass.async_block_till_done()
     assert mock_zc.mock_calls[0] == call(
         interfaces=[
-            "2001:db8::",
-            "fe80::1234:5678:9abc:def0",
+            "2001:db8::%1",
+            "fe80::1234:5678:9abc:def0%1",
             "192.168.1.5",
             "172.16.1.5",
-            "fe80::dead:beef:dead:beef",
+            "fe80::dead:beef:dead:beef%3",
         ],
         ip_version=IPVersion.All,
     )
@@ -989,7 +1113,7 @@ async def test_async_detect_interfaces_explicitly_set_ipv6_linux(
         await hass.async_block_till_done()
 
     assert mock_zc.mock_calls[0] == call(
-        interfaces=["192.168.1.5", "fe80::dead:beef:dead:beef"],
+        interfaces=["192.168.1.5", "fe80::dead:beef:dead:beef%3"],
         ip_version=IPVersion.All,
     )
 
@@ -1030,37 +1154,3 @@ async def test_no_name(hass, mock_async_zeroconf):
     register_call = mock_async_zeroconf.async_register_service.mock_calls[-1]
     info = register_call.args[0]
     assert info.name == "Home._home-assistant._tcp.local."
-
-
-async def test_service_info_compatibility(hass, caplog):
-    """Test compatibility with old-style dict.
-
-    To be removed in 2022.6
-    """
-    discovery_info = zeroconf.ZeroconfServiceInfo(
-        host="mock_host",
-        port=None,
-        hostname="mock_hostname",
-        type="mock_type",
-        name="mock_name",
-        properties={},
-    )
-
-    # Ensure first call get logged
-    assert discovery_info["host"] == "mock_host"
-    assert discovery_info.get("host") == "mock_host"
-    assert discovery_info.get("host", "fallback_host") == "mock_host"
-    assert discovery_info.get("invalid_key", "fallback_host") == "fallback_host"
-    assert "Detected code that accessed discovery_info['host']" in caplog.text
-    assert "Detected code that accessed discovery_info.get('host')" not in caplog.text
-
-    # Ensure second call doesn't get logged
-    caplog.clear()
-    assert discovery_info["host"] == "mock_host"
-    assert discovery_info.get("host") == "mock_host"
-    assert "Detected code that accessed discovery_info['host']" not in caplog.text
-    assert "Detected code that accessed discovery_info.get('host')" not in caplog.text
-
-    discovery_info._warning_logged = False
-    assert discovery_info.get("host") == "mock_host"
-    assert "Detected code that accessed discovery_info.get('host')" in caplog.text

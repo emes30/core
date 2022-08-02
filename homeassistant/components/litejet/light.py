@@ -1,13 +1,17 @@
 """Support for LiteJet lights."""
 import logging
+from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_TRANSITION,
-    SUPPORT_BRIGHTNESS,
-    SUPPORT_TRANSITION,
+    ColorMode,
     LightEntity,
+    LightEntityFeature,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_DEFAULT_TRANSITION, DOMAIN
 
@@ -16,7 +20,11 @@ _LOGGER = logging.getLogger(__name__)
 ATTR_NUMBER = "number"
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     """Set up entry."""
 
     system = hass.data[DOMAIN]
@@ -34,6 +42,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LiteJetLight(LightEntity):
     """Representation of a single LiteJet light."""
 
+    _attr_color_mode = ColorMode.BRIGHTNESS
+    _attr_supported_color_modes = {ColorMode.BRIGHTNESS}
+    _attr_supported_features = LightEntityFeature.TRANSITION
+
     def __init__(self, config_entry, lj, i, name):  # pylint: disable=invalid-name
         """Initialize a LiteJet light."""
         self._config_entry = config_entry
@@ -42,12 +54,12 @@ class LiteJetLight(LightEntity):
         self._brightness = 0
         self._name = name
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         self._lj.on_load_activated(self._index, self._on_load_changed)
         self._lj.on_load_deactivated(self._index, self._on_load_changed)
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         self._lj.unsubscribe(self._on_load_changed)
 
@@ -55,11 +67,6 @@ class LiteJetLight(LightEntity):
         """Handle state changes."""
         _LOGGER.debug("Updating due to notification for %s", self._name)
         self.schedule_update_ha_state(True)
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
 
     @property
     def name(self):
@@ -91,7 +98,7 @@ class LiteJetLight(LightEntity):
         """Return the device state attributes."""
         return {ATTR_NUMBER: self._index}
 
-    def turn_on(self, **kwargs):
+    def turn_on(self, **kwargs: Any) -> None:
         """Turn on the light."""
 
         # If neither attribute is specified then the simple activate load
@@ -109,7 +116,7 @@ class LiteJetLight(LightEntity):
 
         self._lj.activate_load_at(self._index, brightness, int(transition))
 
-    def turn_off(self, **kwargs):
+    def turn_off(self, **kwargs: Any) -> None:
         """Turn off the light."""
         if ATTR_TRANSITION in kwargs:
             self._lj.activate_load_at(self._index, 0, kwargs[ATTR_TRANSITION])
@@ -120,6 +127,6 @@ class LiteJetLight(LightEntity):
         # transition value programmed in the LiteJet system.
         self._lj.deactivate_load(self._index)
 
-    def update(self):
+    def update(self) -> None:
         """Retrieve the light's brightness from the LiteJet system."""
         self._brightness = int(self._lj.get_load_level(self._index) / 99 * 255)
