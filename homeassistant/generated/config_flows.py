@@ -216,6 +216,7 @@ FLOWS = {
         "meteoclimatic",
         "metoffice",
         "mikrotik",
+        "mikrotik_firewall",
         "mill",
         "minecraft_server",
         "mjpeg",

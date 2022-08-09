@@ -1,9 +1,11 @@
 """Config flow for Mikrotik firewall manager integration."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 import logging
-from typing import Any, Mapping
+from typing import Any
 
+from asyncclick import password_option
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -13,6 +15,7 @@ from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
+    CONF_FILTER,
     CONF_HOST,
     CONF_PASS,
     CONF_RULE_ID,
@@ -21,6 +24,7 @@ from .const import (
     CONF_USER,
     DOMAIN,
 )
+from .hub import MikrotikHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +43,9 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         # username
         vol.Required(CONF_USER): cv.string,
         # password, can be empty
-        vol.Optional(CONF_PASS): cv.string,
+        vol.Optional(CONF_PASS, password_option): cv.string,
+        # rule filter, can be empty
+        vol.Optional(CONF_FILTER): cv.string,
     }
 )
 
@@ -51,25 +57,6 @@ STEP_RULES = vol.Schema(
 )
 
 
-class PlaceholderHub:
-    """Placeholder class to make tests pass.
-
-    TODO Remove this placeholder class and replace with things from your PyPI package.
-    """
-
-    def __init__(self, host: str) -> None:
-        """Initialize."""
-        self.host = host
-
-    async def authenticate(self, username: str, password: str) -> bool:
-        """Test if we can authenticate with the host."""
-        return True
-
-    async def get_rules(self, rules_filter: str = None) -> list[str]:
-        """Get list of firewall rules from router."""
-        return ["net_mati", "net_tv", "net_chrome"]
-
-
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """
     Validate the user input allows us to connect.
@@ -78,14 +65,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     with values provided by the user.
     """
 
-    # TODO validate the data can be used to set up a connection.
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
-
-    hub = PlaceholderHub(data[CONF_HOST])
+    hub = MikrotikHub(data[CONF_HOST])
 
     if not await hub.authenticate(data[CONF_USER], data[CONF_PASS]):
         raise InvalidAuth
@@ -117,7 +97,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user", data_schema=STEP_USER_DATA_SCHEMA
             )
 
-        """ Validate user input """
+        # Validate user input
         errors: dict[str, Any] = {}
 
         try:
@@ -133,30 +113,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not errors:
             self.data = user_input
             self.data[CONF_RULES] = info[CONF_RULES]
-            return await self.async_step_rule()
+            return self.async_create_entry(
+                title="Mikrotik Firewall",
+                data=self.data,
+            )
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
-
-    async def async_step_rule(self, user_input: dict[str, Any] | None = None):
-        """Second step. Select which rules to add to HA."""
-        errors: dict[str, Any] = {}
-
-        if user_input is None:
-            rules_schema = vol.Schema(
-                {
-                    #        vol.Optional("rules", default=list(self.data[CONF_RULES]): cv.multi_select(self.data[CONF_RULES])),
-                    vol.Optional(CONF_RULE_ID): cv.string,
-                    vol.Optional(CONF_RULE_NAME): cv.string,
-                }
-            )
-            return self.async_show_form(
-                step_id="rules", data_schema=rules_schema, errors=errors
-            )
-
-        if not errors:
-            return self.async_create_entry(title="Mikrotik Firewall", data=self.data)
 
 
 class CannotConnect(HomeAssistantError):

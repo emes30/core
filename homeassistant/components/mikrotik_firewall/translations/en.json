@@ -11,9 +11,10 @@
         "step": {
             "user": {
                 "data": {
+                    "filter": "Rule filter",
                     "host": "Host",
-                    "password": "Password",
-                    "username": "Username"
+                    "pass": "Password",
+                    "user": "Username"
                 }
             }
         }

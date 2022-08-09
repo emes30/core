@@ -6,15 +6,12 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
-PLATFORMS: list[str] = ["light"]
+# support for switch platform
+PLATFORMS: list[str] = ["switch"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Mikrotik firewall manager from a config entry."""
-    # TODO Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
     hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
