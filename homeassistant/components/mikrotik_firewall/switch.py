@@ -80,6 +80,7 @@ class MikrotikCoordinator(DataUpdateCoordinator):
         # try:
         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
         # handled by the data update coordinator.
+        await self.hub.save_data(self.data)
         async with async_timeout.timeout(10):
             return await self.hub.fetch_data()
         # except ApiAuthError as err:
@@ -96,12 +97,11 @@ class RuleSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(self, coordinator, rule):
         """Class setup."""
         super().__init__(coordinator)
-        self._is_on = False
         self._rule = rule
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._is_on = self.coordinator.data[self._rule]["state"]
+        self._attr_is_on = self.coordinator.data[self._rule]["state"]
         self.async_write_ha_state()
 
     @property
@@ -115,21 +115,21 @@ class RuleSwitch(CoordinatorEntity, SwitchEntity):
         return f"fw_rule_{ self._rule }"
 
     async def _update_state(self):
-        self.coordinator.data[self._rule]["state"] = self._is_on
+        self.coordinator.data[self._rule]["state"] = self._attr_is_on
         self.coordinator.data[self._rule]["updated"] = True
         await self.coordinator.async_request_refresh()
 
     @property
     def is_on(self):
         """If the switch is currently on or off."""
-        return self._is_on
+        return self._attr_is_on
 
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
-        self._is_on = True
+        self._attr_is_on = True
         await self._update_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
-        self._is_on = False
+        self._attr_is_on = False
         await self._update_state()

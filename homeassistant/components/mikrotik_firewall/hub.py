@@ -10,6 +10,11 @@ class MikrotikHub:
     def __init__(self, host: str) -> None:
         """Initialize."""
         self.host = host
+        self._rules = {
+            "net_mati": {"state": True},
+            "net_tv": {"state": True},
+            "net_chrome": {"state": True},
+        }
 
     async def authenticate(self, username: str, password: str) -> bool:
         """Test if we can authenticate with the host."""
@@ -21,11 +26,11 @@ class MikrotikHub:
 
     async def fetch_data(self, rules_filter: str = None):
         """Get current rules states."""
-        return {
-            "net_mati": {"state": True},
-            "net_tv": {"state": True},
-            "net_chrome": {"state": True},
-        }
+        return self._rules
 
-    async def save_data(self):
+    async def save_data(self, new_states: dict):
         """Update rules states."""
+        if new_states:
+            for rule_key in [x for x in new_states if "updated" in new_states[x]]:
+                if new_states[rule_key]["updated"]:
+                    self._rules[rule_key]["state"] = new_states[rule_key]["state"]
