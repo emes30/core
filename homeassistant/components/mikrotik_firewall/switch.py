@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .const import CONF_FILTER, CONF_HOST, CONF_PASS, CONF_USER
+from .const import CONF_FILTER, CONF_HOST, CONF_PASS, CONF_USER, DOMAIN
 from .hub import MikrotikHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,15 +37,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Mikrotik switch platform."""
-    # session = async_get_clientsession(hass)
-    hub = MikrotikHub(config.data[CONF_HOST])
-    coordinator = MikrotikCoordinator(hass, hub)
+    coordinator: MikrotikCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     switches = [
-        RuleSwitch(coordinator, rule)
-        for rule in await hub.get_rules(config.data[CONF_FILTER])
+        RuleSwitch(coordinator, rule) for rule in await coordinator.hub.get_rules()
     ]
     async_add_entities(switches, update_before_add=True)
 
@@ -53,7 +52,9 @@ async def async_setup_entry(
 class MikrotikCoordinator(DataUpdateCoordinator):
     """Fetch rules states from router."""
 
-    def __init__(self, hass, hub):
+    def __init__(
+        self, hass: HomeAssistant, config_entry: ConfigEntry, hub: MikrotikHub
+    ) -> None:
         """Initialize my coordinator."""
         super().__init__(
             hass,
@@ -65,10 +66,11 @@ class MikrotikCoordinator(DataUpdateCoordinator):
             # Update rules state
             update_method=self._async_save,
         )
-        self.hub = hub
+        self._config_entry = config_entry
+        self._hub = hub
 
     async def _async_save(self):
-        await self.hub.save(self.data)
+        await self._hub.save(self.data)
         return
 
     async def _async_update_data(self):
@@ -80,9 +82,9 @@ class MikrotikCoordinator(DataUpdateCoordinator):
         # try:
         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
         # handled by the data update coordinator.
-        await self.hub.save_data(self.data)
+        await self._hub.save_data(self.data)
         async with async_timeout.timeout(10):
-            return await self.hub.fetch_data()
+            return await self._hub.fetch_data()
         # except ApiAuthError as err:
         # Raising ConfigEntryAuthFailed will cancel future updates
         # and start a config flow with SOURCE_REAUTH (async_step_reauth)
@@ -90,11 +92,16 @@ class MikrotikCoordinator(DataUpdateCoordinator):
         # except ApiError as err:
         #    raise UpdateFailed(f"Error communicating with API: {err}")
 
+    @property
+    def hub(self) -> MikrotikHub:
+        """Return hub object for router communication."""
+        return self._hub
+
 
 class RuleSwitch(CoordinatorEntity, SwitchEntity):
     """Firewall rule switch."""
 
-    def __init__(self, coordinator, rule):
+    def __init__(self, coordinator, rule) -> None:
         """Class setup."""
         super().__init__(coordinator)
         self._rule = rule
