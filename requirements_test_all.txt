@@ -410,6 +410,9 @@ defusedxml==0.7.1
 # homeassistant.components.deluge
 deluge-client==1.7.1
 
+# homeassistant.components.lametric
+demetriek==0.2.2
+
 # homeassistant.components.denonavr
 denonavr==0.10.11
 
@@ -1275,7 +1278,7 @@ pysiaalarm==3.0.2
 pysignalclirestapi==0.3.18
 
 # homeassistant.components.sma
-pysma==0.6.11
+pysma==0.6.12
 
 # homeassistant.components.smappee
 pysmappee==0.2.29
@@ -1373,7 +1376,7 @@ pytrafikverket==0.2.0.1
 pyudev==0.23.2
 
 # homeassistant.components.unifiprotect
-pyunifiprotect==4.0.13
+pyunifiprotect==4.1.2
 
 # homeassistant.components.uptimerobot
 pyuptimerobot==22.2.0
@@ -1409,7 +1412,7 @@ pyws66i==1.1
 pyzerproc==0.4.8
 
 # homeassistant.components.qingping
-qingping-ble==0.2.3
+qingping-ble==0.2.4
 
 # homeassistant.components.rachio
 rachiopy==1.0.3
