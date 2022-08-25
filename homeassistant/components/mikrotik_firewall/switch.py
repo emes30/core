@@ -16,7 +16,15 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .const import CONF_FILTER, CONF_HOST, CONF_PASS, CONF_USER, DOMAIN
+from .const import (
+    CONF_FILTER,
+    CONF_HOST,
+    CONF_PASS,
+    CONF_USER,
+    DISABLED_FALSE,
+    DISABLED_TRUE,
+    DOMAIN,
+)
 from .hub import MikrotikHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,10 +51,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Mikrotik switch platform."""
     coordinator: MikrotikCoordinator = hass.data[DOMAIN][config_entry.entry_id]
-    switches = [
-        RuleSwitch(coordinator, rule) for rule in await coordinator.hub.get_rules()
-    ]
-    async_add_entities(switches, update_before_add=True)
+    new_rules = await coordinator.hub.get_rules(True)
+    if new_rules:
+        switches = [RuleSwitch(coordinator, new_rules[rule]) for rule in new_rules]
+        async_add_entities(switches, update_before_add=True)
 
 
 class MikrotikCoordinator(DataUpdateCoordinator):
@@ -62,7 +70,7 @@ class MikrotikCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Mikrotik rule switch",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=60),
+            update_interval=timedelta(seconds=15),
             # Update rules state
             update_method=self._async_save,
         )
@@ -82,9 +90,12 @@ class MikrotikCoordinator(DataUpdateCoordinator):
         # try:
         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
         # handled by the data update coordinator.
+        self._hub.connect()
         await self._hub.save_data(self.data)
         async with async_timeout.timeout(10):
-            return await self._hub.fetch_data()
+            data = await self._hub.fetch_data()
+        self._hub.disconnect()
+        return data
         # except ApiAuthError as err:
         # Raising ConfigEntryAuthFailed will cancel future updates
         # and start a config flow with SOURCE_REAUTH (async_step_reauth)
@@ -101,29 +112,32 @@ class MikrotikCoordinator(DataUpdateCoordinator):
 class RuleSwitch(CoordinatorEntity, SwitchEntity):
     """Firewall rule switch."""
 
-    def __init__(self, coordinator, rule) -> None:
+    def __init__(self, coordinator: DataUpdateCoordinator, rule: dict) -> None:
         """Class setup."""
         super().__init__(coordinator)
         self._rule = rule
+        self._attr_is_on = rule["disabled"] == DISABLED_TRUE
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_is_on = self.coordinator.data[self._rule]["state"]
+        self._attr_is_on = self.coordinator.data[self.name]["disabled"] == DISABLED_TRUE
         self.async_write_ha_state()
 
     @property
     def name(self):
         """Name of the entity."""
-        return self._rule
+        return self._rule["comment"]
 
     @property
     def unique_id(self) -> str:
         """Return entity unique id."""
-        return f"fw_rule_{ self._rule }"
+        # homeassistant.helpers.device_registry.format_mac
+        return f"fw_rule_{ self.name }"
 
     async def _update_state(self):
-        self.coordinator.data[self._rule]["state"] = self._attr_is_on
-        self.coordinator.data[self._rule]["updated"] = True
+        self._rule["disabled"] = DISABLED_TRUE if self._attr_is_on else DISABLED_FALSE
+        self.coordinator.data[self.name]["disabled"] = self._rule["disabled"]
+        self.coordinator.data[self.name]["updated"] = True
         await self.coordinator.async_request_refresh()
 
     @property

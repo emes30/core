@@ -6,7 +6,13 @@ from typing import Any
 
 import routeros_api
 
-from .const import CONF_HOST, CONF_PASS, CONF_USER, MK_API_IP_FIREWALL_FILTER
+from .const import (
+    CONF_FILTER,
+    CONF_HOST,
+    CONF_PASS,
+    CONF_USER,
+    MK_API_IP_FIREWALL_FILTER,
+)
 from .errors import CannotConnect, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,13 +31,10 @@ class MikrotikHub:
         self._api: routeros_api.api.RouterOsApi = None
         self._rules_res: routeros_api.resource.RouterOsResource = None
         self._mac: str | None = None
-        self._rules: dict = {
-            "net_mati": {"state": True},
-            "net_tv": {"state": True},
-            "net_chrome": {"state": True},
-        }
+        self._rules: dict = {}
 
-    def _connect(self) -> None:
+    def connect(self) -> None:
+        """Connect to rotuer."""
         try:
             password = self._config[CONF_PASS] if CONF_PASS in self._config else ""
             connection = routeros_api.RouterOsApiPool(
@@ -47,11 +50,16 @@ class MikrotikHub:
         except (Exception) as ex:
             _LOGGER.error("Connection to [%s] error: %s", self._config[CONF_HOST], ex)
             self._api = None
-            if len(ex.args) > 0 and "invalid user" in ex.args[0]:
+            if (
+                len(ex.args) > 0
+                and isinstance(ex.args[0], str)
+                and "invalid user" in ex.args[0]
+            ):
                 raise InvalidAuth from ex
             raise CannotConnect from ex
 
-    def _disconnect(self) -> None:
+    def disconnect(self) -> None:
+        """Disconnect from router."""
         if self._conn:
             self._conn.disconnect()
             self._conn = None
@@ -70,25 +78,72 @@ class MikrotikHub:
 
         return None
 
+    def _can_add_rule(self, rule: dict) -> bool:
+        if "comment" not in rule:
+            return False
+
+        comment = rule["comment"]
+
+        if " " in comment:
+            return False
+
+        if CONF_FILTER in self._config:
+            if not self._config[CONF_FILTER] in comment:
+                return False
+
+        return True
+
+    def _get_rules(self, connect: bool = False) -> dict | None:
+        if connect:
+            self.connect()
+
+        if not self._api:
+            return None
+
+        new_rules: dict = {}
+
+        rules = self._rules_res.get()
+        if rules:
+            for rule in rules:
+                if not self._can_add_rule(rule):
+                    continue
+                comment = rule["comment"]
+                if comment not in self._rules:
+                    new_rules[comment] = rule
+                self._rules[comment] = rule
+
+        if connect:
+            self.disconnect()
+
+        return new_rules
+
     async def authenticate(self) -> bool:
         """Test if we can authenticate with the host."""
-        self._connect()
+        self.connect()
         if self._api:
-            self._disconnect()
+            self.disconnect()
             return True
         return False
 
-    async def get_rules(self) -> list[str]:
+    async def get_rules(self, connect: bool = False) -> dict:
         """Get list of firewall rules from router."""
-        return ["net_mati", "net_tv", "net_chrome"]
-
-    async def fetch_data(self):
-        """Get current rules states."""
+        self._get_rules(True)
         return self._rules
 
-    async def save_data(self, new_states: dict):
+    async def fetch_data(self) -> dict:
+        """Get current rules states."""
+        self._get_rules(False)
+        return self._rules
+
+    async def _set_rule(self, rule: dict) -> None:
+        if rule:
+            self._rules_res.set(id=rule["id"], disabled=rule["disabled"])
+
+    async def save_data(self, rules: dict):
         """Update rules states."""
-        if new_states:
-            for rule_key in [x for x in new_states if "updated" in new_states[x]]:
-                if new_states[rule_key]["updated"]:
-                    self._rules[rule_key]["state"] = new_states[rule_key]["state"]
+        if rules:
+            for rule_key in [x for x in rules if "updated" in rules[x]]:
+                rule = rules[rule_key]
+                if rule["updated"]:
+                    await self._set_rule(rule)
+                rule["updated"] = False

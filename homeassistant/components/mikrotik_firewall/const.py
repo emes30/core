@@ -13,3 +13,6 @@ CONF_RULE_NAME = "rule_name"
 
 # mikrotik api resources
 MK_API_IP_FIREWALL_FILTER = "/ip/firewall/filter"
+
+DISABLED_TRUE = "true"
+DISABLED_FALSE = "false"
