@@ -601,6 +601,8 @@ build.json @home-assistant/supervisor
 /tests/components/laundrify/ @xLarry
 /homeassistant/components/lcn/ @alengwenus
 /tests/components/lcn/ @alengwenus
+/homeassistant/components/led_ble/ @bdraco
+/tests/components/led_ble/ @bdraco
 /homeassistant/components/lg_netcast/ @Drafteed
 /homeassistant/components/life360/ @pnbruckner
 /tests/components/life360/ @pnbruckner
@@ -611,8 +613,8 @@ build.json @home-assistant/supervisor
 /homeassistant/components/linux_battery/ @fabaff
 /homeassistant/components/litejet/ @joncar
 /tests/components/litejet/ @joncar
-/homeassistant/components/litterrobot/ @natekspencer
-/tests/components/litterrobot/ @natekspencer
+/homeassistant/components/litterrobot/ @natekspencer @tkdrob
+/tests/components/litterrobot/ @natekspencer @tkdrob
 /homeassistant/components/local_ip/ @issacg
 /tests/components/local_ip/ @issacg
 /homeassistant/components/lock/ @home-assistant/core
@@ -651,6 +653,8 @@ build.json @home-assistant/supervisor
 /tests/components/melcloud/ @vilppuvuorinen
 /homeassistant/components/melissa/ @kennedyshead
 /tests/components/melissa/ @kennedyshead
+/homeassistant/components/melnor/ @vanstinator
+/tests/components/melnor/ @vanstinator
 /homeassistant/components/met/ @danielhiversen @thimic
 /tests/components/met/ @danielhiversen @thimic
 /homeassistant/components/met_eireann/ @DylanGore
@@ -846,6 +850,8 @@ build.json @home-assistant/supervisor
 /homeassistant/components/prosegur/ @dgomes
 /tests/components/prosegur/ @dgomes
 /homeassistant/components/proxmoxve/ @jhollowe @Corbeno
+/homeassistant/components/prusalink/ @balloob
+/tests/components/prusalink/ @balloob
 /homeassistant/components/ps4/ @ktnrg45
 /tests/components/ps4/ @ktnrg45
 /homeassistant/components/pure_energie/ @klaasnicolaas
@@ -961,6 +967,8 @@ build.json @home-assistant/supervisor
 /tests/components/sensibo/ @andrey-git @gjohansson-ST
 /homeassistant/components/sensor/ @home-assistant/core
 /tests/components/sensor/ @home-assistant/core
+/homeassistant/components/sensorpro/ @bdraco
+/tests/components/sensorpro/ @bdraco
 /homeassistant/components/sensorpush/ @bdraco
 /tests/components/sensorpush/ @bdraco
 /homeassistant/components/sentry/ @dcramer @frenck
