@@ -165,6 +165,10 @@ BLUETOOTH: list[dict[str, bool | str | int | list[int]]] = [
         "local_name": "QHM-*"
     },
     {
+        "domain": "led_ble",
+        "local_name": "AP-*"
+    },
+    {
         "domain": "melnor",
         "manufacturer_data_start": [
             89
@@ -264,6 +268,15 @@ BLUETOOTH: list[dict[str, bool | str | int | list[int]]] = [
         "domain": "thermopro",
         "local_name": "TP35*",
         "connectable": False
+    },
+    {
+        "domain": "thermopro",
+        "local_name": "TP39*",
+        "connectable": False
+    },
+    {
+        "domain": "tilt_ble",
+        "manufacturer_id": 76
     },
     {
         "domain": "xiaomi_ble",
