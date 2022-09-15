@@ -14,6 +14,10 @@
     "esbenp.prettier-vscode",
     "GitHub.vscode-pull-request-github"
   ],
+  // here i mount my custom components
+  "mounts": [
+    "source=${localEnv:HOME}/python/facebook_messenger/facebook-messenger/custom_components/facebook_messenger,target=/workspaces/core/config/custom_components/facebook_messenger,type=bind,consistency=cached"
+  ],
   // Please keep this file in sync with settings in home-assistant/.vscode/settings.default.json
   "settings": {
     "python.pythonPath": "/usr/local/bin/python",
