@@ -5,7 +5,6 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from asyncclick import password_option
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -43,7 +42,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         # username
         vol.Required(CONF_USER): cv.string,
         # password, can be empty
-        vol.Optional(CONF_PASS, password_option): cv.string,
+        vol.Optional(CONF_PASS): cv.string,
         # rule filter, can be empty
         vol.Optional(CONF_FILTER): cv.string,
     }
