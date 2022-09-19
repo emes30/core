@@ -41,7 +41,7 @@ class MikrotikHub:
         try:
             password = self._config[CONF_PASS] if CONF_PASS in self._config else ""
             kwargs = {}
-            if self._config[CONF_SSL]:
+            if CONF_SSL in self._config and self._config[CONF_SSL]:
                 ssl_context = ssl.create_default_context()
                 ssl_context.check_hostname = False
                 ssl_context.verify_mode = ssl.CERT_NONE
