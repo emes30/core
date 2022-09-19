@@ -4,9 +4,11 @@
       "user": {
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
-          "user": "[%key:common::config_flow::data::username%]",
-          "pass": "[%key:common::config_flow::data::password%]",
-          "filter": "Rule filter"
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]",
+          "filter": "Rule filter",
+          "use_ssl": "Use SSL",
+          "chain": "Firewall chain"
         }
       }
     },

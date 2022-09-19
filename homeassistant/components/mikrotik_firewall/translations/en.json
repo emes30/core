@@ -12,9 +12,11 @@
             "user": {
                 "data": {
                     "filter": "Rule filter",
+                    "chain": "Firewall chain",
+                    "use_ssl": "Use SSL",
                     "host": "Host",
-                    "pass": "Password",
-                    "user": "Username"
+                    "password": "Password",
+                    "username": "Username"
                 }
             }
         }
