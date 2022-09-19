@@ -7,6 +7,7 @@ from typing import Any
 import routeros_api
 
 from .const import (
+    CONF_CHAIN,
     CONF_FILTER,
     CONF_HOST,
     CONF_PASS,
@@ -91,7 +92,11 @@ class MikrotikHub:
             if not self._config[CONF_FILTER] in comment:
                 return False
 
-        return True
+        chain = self._config[CONF_CHAIN] if CONF_CHAIN in self._config else ""
+        if not chain:
+            return True
+
+        return rule["chain"] == chain
 
     def _get_rules(self, connect: bool = False) -> dict | None:
         if connect:

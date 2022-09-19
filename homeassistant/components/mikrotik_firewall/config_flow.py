@@ -13,12 +13,14 @@ from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
+    CONF_CHAIN,
     CONF_FILTER,
     CONF_HOST,
     CONF_PASS,
     CONF_RULE_ID,
     CONF_RULE_NAME,
     CONF_RULES,
+    CONF_SSL,
     CONF_USER,
     DOMAIN,
 )
@@ -43,6 +45,10 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_USER): cv.string,
         # password, can be empty
         vol.Optional(CONF_PASS): cv.string,
+        # use secure sockets
+        vol.Optional(CONF_SSL): cv.boolean,
+        # select chain, optional
+        vol.Optional(CONF_CHAIN): cv.string,
         # rule filter, can be empty
         vol.Optional(CONF_FILTER): cv.string,
     }
