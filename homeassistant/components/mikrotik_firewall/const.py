@@ -6,6 +6,8 @@ CONF_USER = "username"
 CONF_PASS = "password"
 CONF_HOST = "host"
 CONF_FILTER = "filter"
+CONF_CHAIN = "chain"
+CONF_SSL = "use_ssl"
 
 CONF_RULES = "rules"
 CONF_RULE_ID = "rule_id"
