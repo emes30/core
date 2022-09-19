@@ -127,14 +127,21 @@ class MikrotikHub:
         new_rules: dict = {}
 
         rules = self._rules_res.get()
+        available_rules = []
         if rules:
             for rule in rules:
                 if not self._can_add_rule(rule):
                     continue
                 comment = rule["comment"]
+                available_rules.append(comment)
                 if comment not in self._rules:
                     new_rules[comment] = rule
                 self._rules[comment] = rule
+
+            # remove unavailable rules
+            unavailable_rules = [x for x in self._rules if x not in available_rules]
+            for key in unavailable_rules:
+                self._rules.pop(key)
 
         if connect:
             self.disconnect()

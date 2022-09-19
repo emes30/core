@@ -125,6 +125,8 @@ class RuleSwitch(CoordinatorEntity, SwitchEntity):
     def _handle_coordinator_update(self) -> None:
         self._attr_is_on = (
             self.coordinator.data[self._rule_comment]["disabled"] == DISABLED_TRUE
+            if self.available
+            else False
         )
         self.async_write_ha_state()
 
