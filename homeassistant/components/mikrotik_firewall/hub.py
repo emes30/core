@@ -37,6 +37,7 @@ class MikrotikHub:
         self._rules_res: routeros_api.resource.RouterOsResource = None
         self._mac: str = ""
         self._rules: dict = {}
+        self._new_rules: dict = {}
 
     def connect(self) -> None:
         """Connect to rotuer."""
@@ -143,6 +144,9 @@ class MikrotikHub:
             for key in unavailable_rules:
                 self._rules.pop(key)
 
+            # new rules
+            self._new_rules = new_rules
+
         if connect:
             self.disconnect()
 
@@ -152,6 +156,11 @@ class MikrotikHub:
     def mac(self) -> str:
         """Return router mac address."""
         return self._mac
+
+    @property
+    def new_rules(self) -> dict:
+        """Return new rules found."""
+        return self._new_rules
 
     async def authenticate(self) -> bool:
         """Test if we can authenticate with the host."""

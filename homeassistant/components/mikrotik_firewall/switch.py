@@ -52,10 +52,16 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Mikrotik switch platform."""
     coordinator: MikrotikCoordinator = hass.data[DOMAIN][config_entry.entry_id]
-    new_rules = await coordinator.hub.get_rules(True)
-    if new_rules:
-        switches = [RuleSwitch(coordinator, new_rules[rule]) for rule in new_rules]
-        async_add_entities(switches, update_before_add=True)
+    # new_rules = await coordinator.hub.get_rules(True)
+
+    @callback
+    def update_rules() -> None:
+        """Add entities for firewall rules found."""
+        update_items(coordinator, async_add_entities)
+
+    config_entry.async_on_unload(coordinator.async_add_listener(update_rules))
+
+    update_rules()
 
 
 class MikrotikCoordinator(DataUpdateCoordinator):
@@ -170,3 +176,16 @@ class RuleSwitch(CoordinatorEntity, SwitchEntity):
         """Turn the switch off."""
         self._attr_is_on = False
         await self._update_state()
+
+
+@callback
+def update_items(
+    coordinator: MikrotikCoordinator,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Add entities for matching rules."""
+    new_rules = coordinator.hub.new_rules
+
+    if new_rules:
+        switches = [RuleSwitch(coordinator, new_rules[rule]) for rule in new_rules]
+        async_add_entities(switches, update_before_add=True)
