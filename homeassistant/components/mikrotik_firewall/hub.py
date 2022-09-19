@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import ssl
 from typing import Any
 
 import routeros_api
@@ -11,6 +12,7 @@ from .const import (
     CONF_FILTER,
     CONF_HOST,
     CONF_PASS,
+    CONF_SSL,
     CONF_USER,
     MK_API_IP_FIREWALL_FILTER,
 )
@@ -38,11 +40,25 @@ class MikrotikHub:
         """Connect to rotuer."""
         try:
             password = self._config[CONF_PASS] if CONF_PASS in self._config else ""
+            kwargs = {}
+            if self._config[CONF_SSL]:
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                ssl_context.set_ciphers("ADH:ALL:@SECLEVEL=0")
+                kwargs = {
+                    "ssl_context": ssl_context,
+                    "ssl_verify": False,
+                    "ssl_verify_hostname": False,
+                    "use_ssl": True,
+                    "port": 8729,
+                }
+            kwargs["plaintext_login"] = password == ""
             connection = routeros_api.RouterOsApiPool(
                 self._config[CONF_HOST],
                 username=self._config[CONF_USER],
                 password=password,
-                plaintext_login=True,
+                **kwargs,
             )
             self._conn = connection
             self._api = self._conn.get_api()
