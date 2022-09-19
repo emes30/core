@@ -113,32 +113,45 @@ class MikrotikCoordinator(DataUpdateCoordinator):
 class RuleSwitch(CoordinatorEntity, SwitchEntity):
     """Firewall rule switch."""
 
-    def __init__(self, coordinator: DataUpdateCoordinator, rule: dict) -> None:
+    def __init__(self, coordinator: MikrotikCoordinator, rule: dict) -> None:
         """Class setup."""
         super().__init__(coordinator)
         self._rule = rule
+        self._rule_comment = self._rule["comment"]
         self._attr_is_on = rule["disabled"] == DISABLED_TRUE
+        self._mac = coordinator.hub.mac
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_is_on = self.coordinator.data[self.name]["disabled"] == DISABLED_TRUE
+        self._attr_is_on = (
+            self.coordinator.data[self._rule_comment]["disabled"] == DISABLED_TRUE
+        )
         self.async_write_ha_state()
 
     @property
     def name(self):
         """Name of the entity."""
-        return f"{ ENTITY_NAME_PREFIX }_{ self._rule['comment'] }"
+        return f"{ ENTITY_NAME_PREFIX }_{ self._rule_comment }"
 
     @property
     def unique_id(self) -> str:
         """Return entity unique id."""
-        # homeassistant.helpers.device_registry.format_mac
-        return f"fw_rule_{ self.name }"
+        return f"fw_rule_{ self._mac }_{ self._rule_comment }"
+
+    @property
+    def available(self) -> bool:
+        """Check if rule is available."""
+        return self._rule_comment in self.coordinator.data
 
     async def _update_state(self):
-        self._rule["disabled"] = DISABLED_TRUE if self._attr_is_on else DISABLED_FALSE
-        self.coordinator.data[self.name]["disabled"] = self._rule["disabled"]
-        self.coordinator.data[self.name]["updated"] = True
+        if self.available:
+            self._rule["disabled"] = (
+                DISABLED_TRUE if self._attr_is_on else DISABLED_FALSE
+            )
+            self.coordinator.data[self._rule_comment]["disabled"] = self._rule[
+                "disabled"
+            ]
+            self.coordinator.data[self._rule_comment]["updated"] = True
         await self.coordinator.async_request_refresh()
 
     @property

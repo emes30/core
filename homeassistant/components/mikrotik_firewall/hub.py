@@ -7,6 +7,8 @@ from typing import Any
 
 import routeros_api
 
+from homeassistant.helpers.device_registry import format_mac
+
 from .const import (
     CONF_CHAIN,
     CONF_FILTER,
@@ -33,7 +35,7 @@ class MikrotikHub:
         self._conn: routeros_api.RouterOsApiPool = None
         self._api: routeros_api.api.RouterOsApi = None
         self._rules_res: routeros_api.resource.RouterOsResource = None
-        self._mac: str | None = None
+        self._mac: str = ""
         self._rules: dict = {}
 
     def connect(self) -> None:
@@ -63,7 +65,8 @@ class MikrotikHub:
             self._conn = connection
             self._api = self._conn.get_api()
             self._rules_res = self._api.get_resource(MK_API_IP_FIREWALL_FILTER)
-            self._mac = self._get_mac()
+            if not self._mac:
+                self._mac = format_mac(self._get_mac())
         except (Exception) as ex:
             _LOGGER.error("Connection to [%s] error: %s", self._config[CONF_HOST], ex)
             self._api = None
@@ -83,17 +86,17 @@ class MikrotikHub:
             self._api = None
             self._rules_res = None
 
-    def _get_mac(self) -> str | None:
+    def _get_mac(self) -> str:
         """Return mac address of first ethernet interface."""
         if not self._api:
-            return None
+            return ""
 
         res = self._api.get_resource("/interface/ethernet")
         eth = res.get()
         if len(eth) > 0:
             return eth[0]["orig-mac-address"]
 
-        return None
+        return ""
 
     def _can_add_rule(self, rule: dict) -> bool:
         if "comment" not in rule:
@@ -137,6 +140,11 @@ class MikrotikHub:
             self.disconnect()
 
         return new_rules
+
+    @property
+    def mac(self) -> str:
+        """Return router mac address."""
+        return self._mac
 
     async def authenticate(self) -> bool:
         """Test if we can authenticate with the host."""
