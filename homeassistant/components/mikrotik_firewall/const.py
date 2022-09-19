@@ -13,6 +13,9 @@ CONF_RULES = "rules"
 CONF_RULE_ID = "rule_id"
 CONF_RULE_NAME = "rule_name"
 
+# entity name prefix
+ENTITY_NAME_PREFIX = "firewall_rule"
+
 # mikrotik api resources
 MK_API_IP_FIREWALL_FILTER = "/ip/firewall/filter"
 

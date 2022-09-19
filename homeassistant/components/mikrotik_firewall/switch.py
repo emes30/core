@@ -24,6 +24,7 @@ from .const import (
     DISABLED_FALSE,
     DISABLED_TRUE,
     DOMAIN,
+    ENTITY_NAME_PREFIX,
 )
 from .hub import MikrotikHub
 
@@ -126,7 +127,7 @@ class RuleSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def name(self):
         """Name of the entity."""
-        return self._rule["comment"]
+        return f"{ ENTITY_NAME_PREFIX }_{ self._rule['comment'] }"
 
     @property
     def unique_id(self) -> str:
