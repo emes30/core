@@ -125,6 +125,7 @@ class MikrotikHub:
         if not self._api:
             return None
 
+        self._new_rules = {}
         new_rules: dict = {}
 
         rules = self._rules_res.get()
