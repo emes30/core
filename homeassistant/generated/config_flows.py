@@ -3,8 +3,6 @@
 To update, run python3 -m script.hassfest
 """
 
-# fmt: off
-
 FLOWS = {
     "integration": [
         "abode",
@@ -172,6 +170,7 @@ FLOWS = {
         "hyperion",
         "ialarm",
         "iaqualink",
+        "ibeacon",
         "icloud",
         "ifttt",
         "inkbird",
@@ -457,7 +456,7 @@ FLOWS = {
         "zerproc",
         "zha",
         "zwave_js",
-        "zwave_me"
+        "zwave_me",
     ],
     "helper": [
         "derivative",
@@ -467,6 +466,6 @@ FLOWS = {
         "switch_as_x",
         "threshold",
         "tod",
-        "utility_meter"
-    ]
+        "utility_meter",
+    ],
 }
